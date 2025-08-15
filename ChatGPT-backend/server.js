@@ -3,21 +3,25 @@ import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 
-dotenv.config(); // Reads .env locally, safe on Render
+dotenv.config();
 
 const app = express();
 app.use(cors({
-  origin: ["https://shahryar-zainaee.github.io"], // Allow only your GitHub Pages site
+  origin: ["https://shahryar-zainaee.github.io"],
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json());
 
-// Health check route
+// Health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// OpenAI client (✅ use the standard env var)
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// ✅ Read API key from env (supports both names)
+const apiKey = process.env.OPENAI_API_KEY || process.env.MIGMIG_2000;
+if (!apiKey) {
+  console.error("❌ Missing OPENAI_API_KEY or MIGMIG_2000 in environment");
+}
+const client = new OpenAI({ apiKey });
 
 // Chat endpoint
 app.post("/api/chat", async (req, res) => {
@@ -32,13 +36,13 @@ app.post("/api/chat", async (req, res) => {
 
     res.json({ reply: r.output_text ?? "" });
   } catch (err) {
-    console.error("OpenAI error:", err?.status, err?.message, err?.response?.data);
+    // Surface helpful info without secrets
+    const status = err?.status || 500;
+    const detail = err?.response?.data || err?.message || "Unknown error";
+    console.error("OpenAI error:", status, detail);
     res.status(500).json({ error: "Server error calling OpenAI" });
   }
 });
 
-// Start server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Backend running on port ${port}`);
-});
+app.listen(port, () => console.log(`Backend running on port ${port}`));
